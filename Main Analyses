@@ -58,7 +58,43 @@ venn.plot <- venn.diagram(input,
 # Plot the Venn diagram
 grid.draw(venn.plot)
 
+
+
 ########################   ECDF plot  ########################  
+
 str(df)
+
+
+first_records <- df %>%
+  group_by(Species, Site, `Alien[yes;no]`) %>% summarise(First_record = min(Year))
+
+
+p1 = ggplot(first_records[first_records$Site == 'Euphrates',], aes(x = First_record, color = `Alien[yes;no]`)) +
+  stat_ecdf() +
+  labs(title = "ECDF of First Record of Euphrates",
+       x = "Year of First Record",
+       y = "ECDF") +
+  scale_color_manual(values = c("no" = "blue", "yes" = "red")) +
+  theme_bw() +theme(
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 14, face = "bold")
+  )
+
+
+
+
+p2 = ggplot(first_records[first_records$Site == 'Tigris',], aes(x = First_record, color = `Alien[yes;no]`)) +
+  stat_ecdf() +
+  labs(title = "ECDF of First Record of Tigris",
+       x = "Year of First Record",
+       y = "ECDF") +
+  scale_color_manual(values = c("no" = "blue", "yes" = "red")) +
+  theme_bw()+theme(
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 14, face = "bold")
+  )
+
+p1 + p2
+
 
 
