@@ -1,0 +1,64 @@
+#### Eufrates and tigris
+
+
+
+df = read_xlsx('mydata 17.07.2023_CK.xlsx')
+
+head(df)
+
+range(df$Year)
+
+
+########################   Records per year  ########################   
+
+
+df1 = df %>% group_by(Site, Year, Species) %>% summarise(N_records= n()) %>% 
+  group_by(Site, Year) %>% summarise(N_records= n())
+
+a=ggplot(df1[df1$Site=='Euphrates',], aes(Year, N_records)) + geom_line(size=1.2, color='purple') +
+  scale_x_continuous(limits = c(1940, 2025), breaks = seq(1940, 2025, by = 5)) + 
+  scale_y_continuous(limits = c(0, 30), breaks = seq(0, 30, by = 5)) + 
+  theme_bw() + ylab('Number of records') + theme(axis.text=element_text(size=12),
+                                                 axis.title=element_text(size=14,face="bold"))
+
+
+
+b=ggplot(df1[df1$Site=='Tigris',], aes(Year, N_records)) + geom_line(size=1.2, color='green') +
+  scale_x_continuous(limits = c(1940, 2025), breaks = seq(1940, 2025, by = 5)) + 
+  scale_y_continuous(limits = c(0, 30), breaks = seq(0, 30, by = 5)) + 
+  theme_bw() + ylab('') + theme(axis.text=element_text(size=12),
+                                                 axis.title=element_text(size=14,face="bold"), 
+                                                 axis.ticks.y = element_blank(),
+axis.text.y = element_blank())
+
+a+b
+
+
+
+########################   Ven diagram  ########################   
+str(df)
+
+install.packages("VennDiagram")
+
+library(VennDiagram)
+
+euphrates_species <- unique(df[df$Site == 'Euphrates',]$Species)
+tigris_species <- unique(df[df$Site == 'Tigris',]$Species)
+
+
+input <- list(Euphrates = euphrates_species, Tigris = tigris_species)
+
+
+venn.plot <- venn.diagram(input, 
+                          filename = NULL, 
+                          fill = c('red', 'blue'), 
+                          alpha = 0.5, 
+                          cat.cex = 1.5)
+
+# Plot the Venn diagram
+grid.draw(venn.plot)
+
+########################   ECDF plot  ########################  
+str(df)
+
+
