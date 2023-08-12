@@ -7,7 +7,7 @@ df = read_xlsx('mydata 17.07.2023_CK.xlsx')
 head(df)
 
 range(df$Year)
-
+str(df)
 
 ########################   Records per year  ########################   
 
@@ -61,7 +61,6 @@ grid.draw(venn.plot)
 
 
 ########################   ECDF plot  ########################  
-
 str(df)
 
 
@@ -97,4 +96,156 @@ p2 = ggplot(first_records[first_records$Site == 'Tigris',], aes(x = First_record
 p1 + p2
 
 
+
+
+###################################################################################################
+
+###################################################################################################
+
+###################################################################################################
+
+
+# Load required library
+library(vegan)
+
+# Convert the relevant columns to appropriate types if necessary
+df$Site <- as.factor(df$Site)
+df$Species <- as.factor(df$Species)
+str(df)
+
+
+
+sites <- unique(df$Site)
+for(site in sites) {
+  site_data <- subset(df, Site == site)
+  species_matrix <- with(site_data, table(Species, Site))
+  
+  # Calculate species accumulation curve
+  species_accumulation <- specaccum(species_matrix)
+  
+  # Fit Lomolino model to the exact accumulation
+# lomolino_model <- fitspecaccum(species_accumulation, "lomolino")
+  
+  # Save the plot to SVG
+#  svg(paste0(site, "_accum_plot.svg"))
+#  plot(species_accumulation, xlab="Sampling Effort", ylab="Species Richness", main=paste("Species Accumulation Curve for", site))
+  
+  # Add Lomolino model using argument 'add'
+ # plot(lomolino_model, add = TRUE, col=2, lwd=2)
+#  dev.off()
+  
+  # Optionally print coefficients and fitted values
+  plot(species_accumulation, xlab="Sampling Effort", ylab="Species Richness", main=paste("Species Accumulation Curve for", site))
+  
+  print(coef(lomolino_model))
+  print(fitted(lomolino_model))
+}
+
+
+par(mfrow = c(1, 2))
+
+
+#species cumulative saturation curves
+Denmark_alien_accum <-read.csv("Denmark_alien_accum.csv",sep=";", stringsAsFactors=TRUE)
+Denmark_alien_accum <- Denmark_alien_accum[,-1]
+
+data(BCI)
+sp1 <- specaccum(Denmark_alien_accum)
+sp2 <- specaccum(Denmark_alien_accum, "random")
+sp2
+summary(sp2)
+plot(sp1, ci.type="poly", col="blue", lwd=2, ci.lty=0, ci.col="lightblue")
+boxplot(sp2, col="yellow", add=TRUE, pch="+")
+
+## Fit Lomolino model to the exact accumulation
+mod1 <- fitspecaccum(sp1, "lomolino")
+coef(mod1)
+fitted(mod1)
+svg("Denmark_accum_plot.svg")
+plot(sp1)
+### Add Lomolino model using argument 'add'
+plot(mod1, add = TRUE, col=2, lwd=2)
+dev.off()
+
+
+
+###################################################################################################
+
+###################################################################################################
+
+###################################################################################################
+
+str(df)
+
+df1= df %>% group_by(Site, Year, Species) %>% summarise(Individuals= sum(Individuals, na.rm = T))
+str(df1)
+
+library(codyn)
+library(ggplot2)
+
+turnover_df <- data.frame(Site = character(),
+                          Year = numeric(),
+                          Turnover = numeric())
+
+# Iterate over the two sites
+for (site in unique(df1$Site)) {
+  # Filter the data for the current site
+  site_data <- df1 %>% filter(Site == site)
+  
+  # Group by year and calculate turnover
+  site_turnover <- turnover(
+    site_data,
+    time.var = "Year",
+    species.var = "Species",
+    abundance.var = "Individuals"
+  )
+  
+  # Combine the results into a data frame
+  site_turnover_df <- data.frame(Site = site,
+                                 Year = site_turnover$Year,
+                                 Turnover = site_turnover$total)
+  
+  # Add the results to the main data frame
+  turnover_df <- rbind(turnover_df, site_turnover_df)
+}
+
+# Plot the results
+ggplot(turnover_df, aes(x = Year, y = Turnover, color = Site)) +
+  geom_line(size= 1.2) +
+  facet_wrap(~ Site) +
+  labs(title = "Species Turnover Over Time", x = "Year", y = "Turnover") +
+  theme_bw() + theme(axis.text = element_text(size=14), 
+                     axis.title = element_text(size= 14, face = 'bold'))
+
+
+
+turnover_df$SiteFactor <- as.factor(turnover_df$Site)
+turnover_df$SiteNum <- as.numeric(turnover_df$SiteFactor)
+
+hist(turnover_df$Turnover[turnover_df$Site == 'Tigris'])
+hist(turnover_df$Turnover[turnover_df$Site == 'Euphrates'])
+
+install.packages("betareg")
+library(betareg)
+
+
+gam_model <- gam(Turnover ~ s(Year, by = SiteNum) + Site, data = turnover_df)
+epsilon <- 1e-5
+turnover_df$Turnover_Transformed <- (turnover_df$Turnover * (1 - 2 * epsilon)) + epsilon
+
+beta_model <- betareg(Turnover_Transformed ~ Year + Site, data = turnover_df)
+summary(beta_model)
+
+str(turnover_df)
+
+plot_gam <- ggplot(turnover_df, aes(x = Year, y = Turnover_Transformed, color = SiteFactor)) +
+  geom_line() +
+  geom_smooth(method = "gam", formula = y ~ s(x), se = T) +
+  labs(title = "Turnover Over Time by Site",
+       x = "Year",
+       y = "Turnover",
+       color = "Site") + theme_bw() + theme(axis.text = element_text(size=14), 
+                                            axis.title = element_text(size= 14, face = 'bold'))
+
+plot_gam
 
