@@ -1,6 +1,6 @@
 #### Eufrates and tigris
 
-
+setwd("C:/Users/Propietario/Desktop/Escritorio/Irmak_Sehan")
 
 df = read_xlsx('mydata 17.07.2023_CK.xlsx')
 
@@ -19,6 +19,7 @@ a=ggplot(df1[df1$Site=='Euphrates',], aes(Year, N_records)) + geom_line(size=1.2
   scale_x_continuous(limits = c(1940, 2025), breaks = seq(1940, 2025, by = 5)) + 
   scale_y_continuous(limits = c(0, 30), breaks = seq(0, 30, by = 5)) + 
   theme_bw() + ylab('Number of records') + theme(axis.text=element_text(size=12),
+                                                 axis.text.x = element_text(angle = 45, hjust = 1),
                                                  axis.title=element_text(size=14,face="bold"))
 
 
@@ -28,6 +29,7 @@ b=ggplot(df1[df1$Site=='Tigris',], aes(Year, N_records)) + geom_line(size=1.2, c
   scale_y_continuous(limits = c(0, 30), breaks = seq(0, 30, by = 5)) + 
   theme_bw() + ylab('') + theme(axis.text=element_text(size=12),
                                                  axis.title=element_text(size=14,face="bold"), 
+                                axis.text.x = element_text(angle = 45, hjust = 1),
                                                  axis.ticks.y = element_blank(),
 axis.text.y = element_blank())
 
@@ -59,6 +61,69 @@ venn.plot <- venn.diagram(input,
 grid.draw(venn.plot)
 
 
+# Bar plot over time witht eh species in both rivers
+head(df)
+
+df2<- df  %>% group_by(Species, Year,Site) %>% summarise(Abundance =sum(Individuals))
+str(df2)
+
+
+
+df3 <- df2 %>%
+  mutate(Decade = 10 * floor(Year / 10))
+
+
+x <- df3 %>% group_by(Decade, Site) %>% summarise(Richness= n_distinct(Species))
+
+
+# Summarize data by decade and river
+long_summary_by_decade <- df3 %>%
+  group_by(Decade, Site) %>%
+  summarise(n_species = n_distinct(Species)) %>%
+  ungroup() %>%
+  spread(Site, n_species) %>%
+  mutate(Both = pmin(Tigris, Euphrates, na.rm = TRUE),
+         Tigris = Tigris - Both,
+         Euphrates = Euphrates - Both) %>%
+  gather(Category, n_species, -Decade) %>%
+  filter(!is.na(n_species))
+
+#OR
+
+unique_species_per_decade <- df3 %>% 
+  group_by(Site, Decade) %>% 
+  summarise(n_unique_species = n_distinct(Species))
+
+# Count the number of unique species that appear in both sites for each decade
+unique_species_in_both_sites <- df3 %>% 
+  group_by(Decade) %>% 
+  summarise(n_unique_species_both_sites = n_distinct(Species))
+
+# Merge the two data frames to get all the information in a single data frame
+final_df <- left_join(unique_species_per_decade, unique_species_in_both_sites, by = "Decade")
+final_df$final_sp <- final_df$n_unique_species_both_sites - final_df$n_unique_species
+
+x<- df3 %>% group_by(Decade, Site, Species) %>% summarise(abundance=sum(Abundance))
+x$test <- 1
+z<- x %>% group_by(Decade, Species, Site) %>% summarise(Abundance= sum(test)) %>% group_by(Decade, Site) %>% 
+  summarise(Richness =n())
+
+z<- z %>% filter(Abundance > 1)
+z1<-z %>% group_by(Decade) %>% summarise(Abundance =n())
+
+# Create the dodged bar plot by decade
+ggplot(long_summary_by_decade, aes(x = as.factor(Decade), y = n_species, fill = Category)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7, color="black", size=0.2) +  # Increased width to 0.7
+  scale_fill_manual(values = c("Both" = "orange", "Tigris" = "green", "Euphrates" = "purple")) +
+  xlab("Decade") +
+  ylab("Number of unique species") +
+  theme_bw()+ 
+  scale_y_continuous(breaks = seq(0, 40, by = 5)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.text = element_text(size=12),
+        axis.title = element_text(size = 14))
+
+
 
 ########################   ECDF plot  ########################  
 str(df)
@@ -70,39 +135,37 @@ first_records <- df %>%
 
 p1 = ggplot(first_records[first_records$Site == 'Euphrates',], aes(x = First_record, color = `Alien[yes;no]`)) +
   stat_ecdf() +
-  labs(title = "ECDF of First Record of Euphrates",
+  labs(
        x = "Year of First Record",
        y = "ECDF") +
-  scale_color_manual(values = c("no" = "blue", "yes" = "red")) +
+  scale_color_manual(values = c("no" = "purple4", "yes" = "purple")) +
   theme_bw() +theme(
     axis.text = element_text(size = 14),
+    axis.text.x = element_text(angle = 45, hjust = 1),
     axis.title = element_text(size = 14, face = "bold")
-  )
+  )+ scale_x_continuous(breaks = seq(1960, 2020, by = 10)) 
 
 
 
 
 p2 = ggplot(first_records[first_records$Site == 'Tigris',], aes(x = First_record, color = `Alien[yes;no]`)) +
   stat_ecdf() +
-  labs(title = "ECDF of First Record of Tigris",
+  labs(
        x = "Year of First Record",
        y = "ECDF") +
-  scale_color_manual(values = c("no" = "blue", "yes" = "red")) +
+  scale_color_manual(values = c("no" = "green4", "yes" = "green")) +
   theme_bw()+theme(
     axis.text = element_text(size = 14),
+    axis.text.x = element_text(angle = 45, hjust = 1),
     axis.title = element_text(size = 14, face = "bold")
-  )
+  )+scale_x_continuous(breaks = seq(1940, 2020, by = 10)) 
 
 p1 + p2
 
 
 
 
-###################################################################################################
-
-###################################################################################################
-
-###################################################################################################
+#######################           Lomolino         ########################
 
 
 # Load required library
@@ -114,35 +177,55 @@ df$Species <- as.factor(df$Species)
 str(df)
 
 
-
 sites <- unique(df$Site)
 for(site in sites) {
   site_data <- subset(df, Site == site)
-  species_matrix <- with(site_data, table(Species, Site))
+  species_matrix <- with(site_data, table(Species, Year))
   
   # Calculate species accumulation curve
   species_accumulation <- specaccum(species_matrix)
   
   # Fit Lomolino model to the exact accumulation
-# lomolino_model <- fitspecaccum(species_accumulation, "lomolino")
-  
+ lomolino_model <- fitspecaccum(species_accumulation, "lomolino")
+ #plot(lomolino_model, ci.type="poly", col="blue", lwd=2, ci.lty=0, ci.col="lightblue")
+ #boxplot(lomolino_model, col="yellow", add=TRUE, pch="+")
+ 
   # Save the plot to SVG
-#  svg(paste0(site, "_accum_plot.svg"))
+ #  svg(paste0(site, "_accum_plot.svg"))
 #  plot(species_accumulation, xlab="Sampling Effort", ylab="Species Richness", main=paste("Species Accumulation Curve for", site))
   
   # Add Lomolino model using argument 'add'
- # plot(lomolino_model, add = TRUE, col=2, lwd=2)
-#  dev.off()
+ #plot(lomolino_model, add = TRUE, col=2, lwd=2)
+ #  dev.off()
   
   # Optionally print coefficients and fitted values
-  plot(species_accumulation, xlab="Sampling Effort", ylab="Species Richness", main=paste("Species Accumulation Curve for", site))
+  #plot(species_accumulation, xlab="Sampling Effort", ylab="Species Richness", 
+  #     main=paste("Species Accumulation Curve for", site))
+  species_accumulation_df <- data.frame(
+    sites = species_accumulation$sites,
+    richness = species_accumulation$richness,
+    sd = species_accumulation$sd
+  )
   
+  # Create the plot using ggplot
+  p <- ggplot(species_accumulation_df, aes(x = sites, y = richness)) +
+    geom_line() +
+    geom_ribbon(aes(ymin = richness - sd, ymax = richness + sd), alpha = 0.3) +
+    #xlim(1, 30) +  # Setting the x-axis limits
+    #ylim(0.5, 1.5) +  # Setting the y-axis limits
+    xlab("Sampling effort") +
+    ylab("Species richness") + scale_x_continuous(n.breaks=8)+scale_y_continuous(n.breaks=8)+
+    theme_bw()+
+    ggtitle(paste("Species Accumulation Curve for", site)) + theme(axis.title =  element_text(size = 14),
+                                                                   axis.text =  element_text(size = 12))
+  
+  # Display the plot
+  print(p)
   print(coef(lomolino_model))
-  print(fitted(lomolino_model))
+  # print(fitted(lomolino_model))
 }
 
 
-par(mfrow = c(1, 2))
 
 
 #species cumulative saturation curves
@@ -169,11 +252,9 @@ dev.off()
 
 
 
-###################################################################################################
+###########################            Turnover          ####################
 
-###################################################################################################
 
-###################################################################################################
 
 str(df)
 
@@ -182,6 +263,8 @@ str(df1)
 
 library(codyn)
 library(ggplot2)
+
+
 
 turnover_df <- data.frame(Site = character(),
                           Year = numeric(),
@@ -197,7 +280,8 @@ for (site in unique(df1$Site)) {
     site_data,
     time.var = "Year",
     species.var = "Species",
-    abundance.var = "Individuals"
+    abundance.var = "Individuals",
+    metric="appearance"
   )
   
   # Combine the results into a data frame
@@ -210,12 +294,14 @@ for (site in unique(df1$Site)) {
 }
 
 # Plot the results
-ggplot(turnover_df, aes(x = Year, y = Turnover, color = Site)) +
-  geom_line(size= 1.2) +
+ggplot(turnover_df, aes(x = Year, y = Turnover, fill = Site)) +
+  geom_bar(stat = "identity", width = 0.7) +
   facet_wrap(~ Site) +
-  labs(title = "Species Turnover Over Time", x = "Year", y = "Turnover") +
-  theme_bw() + theme(axis.text = element_text(size=14), 
-                     axis.title = element_text(size= 14, face = 'bold'))
+  labs( x = "Year", y = "Turnover") +
+  theme_bw() + 
+  theme(axis.text = element_text(size=14), 
+        axis.title = element_text(size= 14, face = 'bold'))
+
 
 
 
@@ -249,3 +335,55 @@ plot_gam <- ggplot(turnover_df, aes(x = Year, y = Turnover_Transformed, color = 
 
 plot_gam
 
+
+
+#################################################################################
+
+#################################################################################
+
+#################################################################################
+
+str(df1)
+
+richness_df <- df1 %>%
+  group_by(Site, Year) %>%
+  summarise(Richness = n_distinct(Species))
+
+euphrates_df <- filter(richness_df, Site == "Euphrates")
+euphrates_model <- glm(Richness ~ Year, data = euphrates_df, family = "poisson")
+summary(euphrates_model)
+
+
+tigris_df <- filter(richness_df, Site == "Tigris")
+tigris_model <- glm(Richness ~ Year, data = tigris_df, family = "poisson")
+summary(tigris_model)
+summary(tigris_model)
+
+# Predict the fitted values and confidence intervals
+euphrates_df$Fitted <- predict(euphrates_model, type = "response")
+tigris_df$Fitted <- predict(tigris_model, type = "response")
+
+# Compute confidence intervals
+euphrates_df$Lower_CI <- predict(euphrates_model, type = "response", se.fit = TRUE)$fit - 1.96 * predict(euphrates_model, type = "response", se.fit = TRUE)$se.fit
+euphrates_df$Upper_CI <- predict(euphrates_model, type = "response", se.fit = TRUE)$fit + 1.96 * predict(euphrates_model, type = "response", se.fit = TRUE)$se.fit
+
+tigris_df$Lower_CI <- predict(tigris_model, type = "response", se.fit = TRUE)$fit - 1.96 * predict(tigris_model, type = "response", se.fit = TRUE)$se.fit
+tigris_df$Upper_CI <- predict(tigris_model, type = "response", se.fit = TRUE)$fit + 1.96 * predict(tigris_model, type = "response", se.fit = TRUE)$se.fit
+
+
+plot_df <- bind_rows(euphrates_df, tigris_df)
+
+
+plot_glm <- ggplot(plot_df, aes(x = Year, y = Fitted, color = Site)) +
+  geom_point(aes(y = Richness), alpha = 0.5) + # Actual observations
+  geom_line() + # Fitted values
+  geom_ribbon(aes(ymin = Lower_CI, ymax = Upper_CI, fill = Site), alpha = 0.2) + # Confidence intervals
+  labs(
+       x = "Year",
+       y = "Richness",
+       color = "Site",
+       fill = "Site") +
+  theme_bw() + theme(axis.text = element_text(size=14), 
+                       axis.title = element_text(size= 14, face = 'bold'))
+
+plot_glm
